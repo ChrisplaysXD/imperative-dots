@@ -260,7 +260,61 @@ Variants {
                 property int activeIndex: 0
             }
             
-            property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "" }
+            property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "", "accent": "#cba6f7", "accent2": "#cba6f7" }
+            
+            property color musicAccent: barWindow.musicData ? (barWindow.musicData.accent || mocha.mauve) : mocha.mauve
+            property color musicAccent2: barWindow.musicData ? (barWindow.musicData.accent2 || mocha.mauve) : mocha.mauve
+
+            property real cavaBar0: 0.1
+            property real cavaBar1: 0.1
+            property real cavaBar2: 0.1
+            property real cavaBar3: 0.1
+            property real cavaMax:  0.1
+
+            Timer {
+                id: cavaWatchdog
+                interval: 1500
+                running: true
+                repeat: true
+                triggeredOnStart: true
+                onTriggered: {
+                    let should = barWindow.isMediaActive && barWindow.musicData && barWindow.musicData.status === "Playing";
+                    if (should && !cavaProc.running) cavaProc.running = true;
+                    if (!should && cavaProc.running) cavaProc.running = false;
+                }
+            }
+
+            Process {
+                id: cavaProc
+                command: ["bash", "-c", "cava -p ~/.config/hypr/scripts/quickshell/music/cava_island.cfg 2>/dev/null"]
+                running: false
+                stdout: SplitParser {
+                    splitMarker: "\n"
+                    onRead: (line) => {
+                        let parts = line.trim().split(" ");
+                        if (parts.length < 4) return;
+                        function norm(s) {
+                            let v = parseInt(s);
+                            // autosens calibrates to ~210 peak; headroom prevents hard clip
+                            return isNaN(v) ? 0.05 : Math.max(0.05, Math.min(1.0, v / 600.0));
+                        }
+                        let b0 = norm(parts[0]), b1 = norm(parts[1]),
+                            b2 = norm(parts[2]), b3 = norm(parts[3]);
+                        barWindow.cavaBar0 = b0;
+                        barWindow.cavaBar1 = b1;
+                        barWindow.cavaBar2 = b2;
+                        barWindow.cavaBar3 = b3;
+                        barWindow.cavaMax  = Math.max(b0, b1, b2, b3);
+                    }
+                }
+                onRunningChanged: {
+                    if (!running) {
+                        barWindow.cavaBar0 = 0.1; barWindow.cavaBar1 = 0.1;
+                        barWindow.cavaBar2 = 0.1; barWindow.cavaBar3 = 0.1;
+                        barWindow.cavaMax  = 0.1;
+                    }
+                }
+            }
 
             property string displayTitle: ""
             property string displayTime: ""
@@ -908,12 +962,33 @@ Variants {
 
                 Rectangle {
                     id: mediaBox
-                    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                    radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                    color: barWindow.musicData.status === "Playing" 
+                        ? Qt.rgba(barWindow.musicAccent.r, barWindow.musicAccent.g, barWindow.musicAccent.b, 0.22) 
+                        : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                    radius: barWindow.s(14)
+                    border.width: 1
+                    border.color: barWindow.musicData.status === "Playing" 
+                        ? Qt.rgba(barWindow.musicAccent.r, barWindow.musicAccent.g, barWindow.musicAccent.b, 0.35) 
+                        : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                     y: (parent.height - barWindow.barHeight) / 2
                     height: barWindow.barHeight
-                    clip: true 
+                    clip: false 
+
+                    Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                    Behavior on border.color { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
                     
+                    // --- Beat Glow ---
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -barWindow.s(4)
+                        radius: parent.radius + barWindow.s(4)
+                        color: "transparent"
+                        border.width: barWindow.s(4)
+                        border.color: Qt.lighter(barWindow.musicAccent, 1.4)
+                        opacity: (barWindow.musicData.status === "Playing") ? (0.08 + barWindow.cavaMax * 0.92) : 0
+                        Behavior on opacity { NumberAnimation { duration: barWindow.cavaMax > 0.5 ? 35 : 200; easing.type: Easing.OutCubic } }
+                    }
+
                     width: barWindow.isMediaActive ? innerMediaLayout.implicitWidth + barWindow.s(24) : 0
                     Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
@@ -964,7 +1039,7 @@ Variants {
                                     Rectangle {
                                         width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8); color: mocha.surface1
                                         border.width: barWindow.musicData.status === "Playing" ? 1 : 0
-                                        border.color: mocha.mauve
+                                        border.color: barWindow.musicAccent
                                         clip: true
                                         Image { 
                                             anchors.fill: parent; 
@@ -974,7 +1049,28 @@ Variants {
                                         
                                         Rectangle {
                                             anchors.fill: parent
-                                            color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.2)
+                                            color: Qt.rgba(barWindow.musicAccent.r, barWindow.musicAccent.g, barWindow.musicAccent.b, 0.2)
+                                        }
+                                    }
+
+                                    // --- The Wave (Cava Bars) ---
+                                    Item {
+                                        width: barWindow.s(20); height: barWindow.s(18); anchors.verticalCenter: parent.verticalCenter
+                                        Row {
+                                            anchors.fill: parent
+                                            spacing: barWindow.s(2)
+                                            Repeater {
+                                                model: 4
+                                                Rectangle {
+                                                    width: barWindow.s(3); anchors.bottom: parent.bottom
+                                                    property real barVal: [barWindow.cavaBar0, barWindow.cavaBar1, barWindow.cavaBar2, barWindow.cavaBar3][index]
+                                                    height: barWindow.musicData.status !== "Playing" ? barWindow.s(18) * 0.15 : barWindow.s(18) * barVal
+                                                    Behavior on height { NumberAnimation { duration: 60; easing.type: Easing.OutCubic } }
+                                                    radius: barWindow.s(1)
+                                                    color: barWindow.musicAccent
+                                                    opacity: barWindow.musicData.status === "Playing" ? 0.95 : 0.35
+                                                }
+                                            }
                                         }
                                     }
                                     Column {
