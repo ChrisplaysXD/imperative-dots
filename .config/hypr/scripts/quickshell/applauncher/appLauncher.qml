@@ -53,6 +53,79 @@ Item {
     // -------------------------------------------------------------------------
     property var allApps: []
 
+    // --- Horizontal Category Tabs ---
+    readonly property var categories: [
+        { name: "All", label: "All" },
+        { name: "Web", label: "Web", keywords: ["browser", "firefox", "chrome", "opera", "discord", "web", "vivaldi", "brave", "youtube", "netflix", "hoyo", "social", "internet"] },
+        { name: "Dev", label: "Dev", keywords: ["code", "neovim", "vim", "studio", "git", "docker", "unity", "unreal", "intellij", "pycharm", "terminal", "kitty", "alacritty", "vscode", "codium"] },
+        { name: "Games", label: "Games", keywords: ["steam", "lutris", "heroic", "game", "minecraft", "anime", "retroarch", "osu", "launcher", "play"] },
+        { name: "Media", label: "Media", keywords: ["spotify", "vlc", "mpv", "audacity", "obs", "gimp", "inkscape", "blender", "kdenlive", "music", "video", "player", "picture", "photo", "image", "krita"] },
+        { name: "System", label: "System", keywords: ["setting", "system", "monitor", "btop", "htop", "config", "file", "thunar", "dolphin", "tweak", "manager", "install", "update", "package", "hidetopbar", "hypr", "quickshell"] }
+    ]
+    property string activeCategory: "All"
+
+    function isAppInCategory(app, catName) {
+        if (catName === "All") return true;
+        let cat = null;
+        for (let i = 0; i < categories.length; i++) {
+            if (categories[i].name === catName) {
+                cat = categories[i];
+                break;
+            }
+        }
+        if (!cat || !cat.keywords) return true;
+        let n = app.name.toLowerCase();
+        let e = app.exec.toLowerCase();
+        for (let i = 0; i < cat.keywords.length; i++) {
+            let kw = cat.keywords[i];
+            if (n.includes(kw) || e.includes(kw)) return true;
+        }
+        return false;
+    }
+
+    function cycleCategory(dir) {
+        let currentIdx = 0;
+        for (let i = 0; i < categories.length; i++) {
+            if (categories[i].name === window.activeCategory) {
+                currentIdx = i;
+                break;
+            }
+        }
+        let nextIdx = (currentIdx + dir + categories.length) % categories.length;
+        window.activeCategory = categories[nextIdx].name;
+        filterApps(searchInput.text);
+    }
+
+    // --- Neon Pulsating Glow ---
+    property real glowOpacity: 0.35
+    SequentialAnimation on glowOpacity {
+        loops: Animation.Infinite
+        running: window.visible
+        
+        NumberAnimation { to: 0.70; duration: 2200; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 0.35; duration: 2200; easing.type: Easing.InOutSine }
+    }
+
+    // --- Search Query Highlight ---
+    function getHighlightedName(name, query, isSelected) {
+        if (!query || query.trim() === "") return name;
+        let q = query.toLowerCase();
+        let n = name.toLowerCase();
+        let idx = n.indexOf(q);
+        if (idx === -1) return name;
+        
+        let originalMatch = name.substring(idx, idx + query.length);
+        let before = name.substring(0, idx);
+        let after = name.substring(idx + query.length);
+        
+        if (isSelected) {
+            return before + "<u><b>" + originalMatch + "</b></u>" + after;
+        } else {
+            let accentHex = window.mauve.toString();
+            return before + "<b><font color='" + accentHex + "'>" + originalMatch + "</font></b>" + after;
+        }
+    }
+
     Process {
         id: appFetcher
         running: true
@@ -98,8 +171,11 @@ Item {
         let filtered = [];
         
         for (let i = 0; i < allApps.length; i++) {
-            if (allApps[i].name.toLowerCase().includes(q)) {
-                filtered.push(allApps[i]);
+            let app = allApps[i];
+            let nameMatches = app.name.toLowerCase().includes(q);
+            let catMatches = window.isAppInCategory(app, window.activeCategory);
+            if (nameMatches && catMatches) {
+                filtered.push(app);
             }
         }
 
@@ -190,12 +266,27 @@ Item {
     // -------------------------------------------------------------------------
     // UI LAYOUT
     // -------------------------------------------------------------------------
+    // --- NEON GLOW BREATHE SHADOW ---
+    Rectangle {
+        anchors.fill: mainBg
+        anchors.margins: -window.s(4)
+        radius: mainBg.radius + window.s(4)
+        color: "transparent"
+        border.width: window.s(3)
+        border.color: window.mauve
+        opacity: window.glowOpacity
+        z: 0
+        Behavior on border.color { ColorAnimation { duration: 800 } }
+    }
+
     Rectangle {
         id: mainBg
         width: parent.width
+        z: 1
         
         // --- DYNAMIC HEIGHT CALCULATION (Bottom-up Shrinking) ---
         property real searchHeight: window.s(65)
+        property real categoryHeight: window.s(40)
         property real separatorHeight: 1
         property real itemHeight: window.s(60)
         property real listSpacing: window.s(4)
@@ -215,14 +306,14 @@ Item {
             NumberAnimation { duration: 500; easing.type: Easing.OutExpo } 
         }
         
-        height: searchHeight + separatorHeight + animatedMargins + animatedListHeight
+        height: searchHeight + categoryHeight + (separatorHeight * 2) + animatedMargins + animatedListHeight
 
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
 
         radius: window.s(16)
         color: Qt.rgba(window.base.r, window.base.g, window.base.b, 1.0)
-        border.color: window.surface1
+        border.color: Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.4)
         border.width: 1
         clip: true
 
@@ -290,6 +381,15 @@ Item {
 
                         onTextChanged: filterApps(text)
 
+                        Keys.onTabPressed: {
+                            window.cycleCategory(1);
+                            event.accepted = true;
+                        }
+                        Keys.onBacktabPressed: { // Shift+Tab
+                            window.cycleCategory(-1);
+                            event.accepted = true;
+                        }
+
                         Keys.onDownPressed: {
                             window.isKeyboardNav = true;
                             keyboardNavTimer.restart();
@@ -320,7 +420,78 @@ Item {
                 }
             }
 
-            // --- SEPARATOR ---
+            // --- SEPARATOR 1 ---
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: mainBg.separatorHeight
+                color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.5)
+            }
+
+            // --- CATEGORY TABS ---
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: mainBg.categoryHeight
+                color: "transparent"
+                Layout.leftMargin: window.s(15)
+                Layout.rightMargin: window.s(15)
+                
+                Row {
+                    anchors.centerIn: parent
+                    spacing: window.s(8)
+                    
+                    Repeater {
+                        model: window.categories
+                        
+                        Rectangle {
+                            height: window.s(28)
+                            width: tabText.implicitWidth + window.s(18)
+                            radius: window.s(14)
+                            color: window.activeCategory === modelData.name 
+                                ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.18)
+                                : "transparent"
+                            border.color: window.activeCategory === modelData.name 
+                                ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.4)
+                                : "transparent"
+                            border.width: 1
+                            
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on border.color { ColorAnimation { duration: 200 } }
+                            
+                            Text {
+                                id: tabText
+                                anchors.centerIn: parent
+                                text: {
+                                    let emoji = "";
+                                    if (modelData.name === "All") emoji = "📦 ";
+                                    else if (modelData.name === "Web") emoji = "🌐 ";
+                                    else if (modelData.name === "Dev") emoji = "📝 ";
+                                    else if (modelData.name === "Games") emoji = "🎮 ";
+                                    else if (modelData.name === "Media") emoji = "🎨 ";
+                                    else if (modelData.name === "System") emoji = "💻 ";
+                                    return emoji + modelData.label;
+                                }
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: window.s(11)
+                                font.bold: window.activeCategory === modelData.name
+                                color: window.activeCategory === modelData.name ? window.mauve : window.subtext0
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    window.activeCategory = modelData.name;
+                                    window.filterApps(searchInput.text);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- SEPARATOR 2 ---
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: mainBg.separatorHeight
@@ -404,11 +575,11 @@ Item {
                     z: 0 
                     
                     Rectangle {
-                        id: activeHighlight
-                        x: 0
-                        width: appList.width
-                        radius: window.s(8)
-                        color: window.mauve
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: window.mauve }
+                            GradientStop { position: 1.0; color: window.blue }
+                        }
 
                         property int prevIdx: 0
                         property int curIdx: appList.currentIndex
@@ -524,7 +695,8 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: model.name
+                                text: window.getHighlightedName(model.name, searchInput.text, index === appList.currentIndex)
+                                textFormat: Text.StyledText
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: window.s(14)
                                 font.weight: index === appList.currentIndex ? Font.Bold : Font.Medium
