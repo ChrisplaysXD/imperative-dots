@@ -88,11 +88,11 @@ local function load_colors()
     local file = io.open(os.getenv("HOME") .. "/.config/hypr/colors.conf", "r")
     if file then
         for line in file:lines() do
-            local act_val = line:match("active_border%s*=%s*(rgba%((%x+)%))")
+            local act_val = line:match("%$active_border%s*=%s*(rgba%((%x+)%))")
             if act_val then
                 active = act_val
             end
-            local inact_val = line:match("inactive_border%s*=%s*(rgba%((%x+)%))")
+            local inact_val = line:match("%$inactive_border%s*=%s*(rgba%((%x+)%))")
             if inact_val then
                 inactive = inact_val
             end
