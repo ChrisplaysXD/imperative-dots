@@ -321,23 +321,73 @@ Item {
         transform: Translate { y: (window.introPhase - 1) * window.s(60) }
         opacity: window.introPhase
 
-        // --- AMBIENT BLOBS ---
-        Rectangle {
-            width: parent.width * 0.8; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
-            y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
-            opacity: 0.08
-            color: window.mauve
-            Behavior on color { ColorAnimation { duration: 1000 } }
-        }
-        
-        Rectangle {
-            width: parent.width * 0.9; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
-            y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
-            opacity: 0.06
-            color: window.blue
-            Behavior on color { ColorAnimation { duration: 1000 } }
+        // --- EARTH & MOON BACKGROUND ANIMATION ---
+        Item {
+            id: spaceBackground
+            anchors.fill: parent
+            opacity: 0.12
+            z: 0
+
+            // Earth
+            Item {
+                id: earthItem
+                width: window.s(180)
+                height: width
+                anchors.centerIn: parent
+                z: 1
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: width / 2
+                    color: "transparent"
+                    clip: true
+
+                    Image {
+                        id: earthImage
+                        anchors.fill: parent
+                        source: "../assets/earth.png"
+                        fillMode: Image.PreserveAspectFit
+
+                        RotationAnimation on rotation {
+                            from: 0; to: 360; duration: 80000; loops: Animation.Infinite; running: true
+                        }
+                    }
+                }
+            }
+
+            // Moon
+            Item {
+                id: moonItem
+                width: window.s(32)
+                height: width
+
+                property real xRadius: window.s(150)
+                property real yRadius: window.s(40)
+                property real angle: window.globalOrbitAngle * 4
+
+                x: (parent.width / 2) + Math.cos(angle) * xRadius - (width / 2)
+                y: (parent.height / 2) + Math.sin(angle) * yRadius - (height / 2)
+
+                z: Math.sin(angle) > 0 ? 2 : 0
+                scale: 1.0 + Math.sin(angle) * 0.25
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: width / 2
+                    color: "transparent"
+                    clip: true
+
+                    Image {
+                        anchors.fill: parent
+                        source: "../assets/moon.png"
+                        fillMode: Image.PreserveAspectFit
+
+                        RotationAnimation on rotation {
+                            from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
+                        }
+                    }
+                }
+            }
         }
 
         ColumnLayout {
