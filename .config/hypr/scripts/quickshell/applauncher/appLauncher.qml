@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick3D
 import Quickshell
 import Quickshell.Io
 import "../"
@@ -321,70 +322,67 @@ Item {
         transform: Translate { y: (window.introPhase - 1) * window.s(60) }
         opacity: window.introPhase
 
-        // --- EARTH & MOON BACKGROUND ANIMATION ---
-        Item {
+        // --- EARTH & MOON 3D BACKGROUND ---
+        View3D {
             id: spaceBackground
             anchors.fill: parent
             opacity: 0.12
             z: 0
 
-            // Earth
-            Item {
-                id: earthItem
-                width: window.s(180)
-                height: width
-                anchors.centerIn: parent
-                z: 1
+            PerspectiveCamera {
+                id: camera
+                z: 500
+            }
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: width / 2
-                    color: "transparent"
-                    clip: true
+            DirectionalLight {
+                eulerRotation.x: -30
+                eulerRotation.y: -45
+                brightness: 1.5
+            }
 
-                    Image {
-                        id: earthImage
-                        anchors.fill: parent
-                        source: "../assets/earth.png"
-                        fillMode: Image.PreserveAspectFit
-
-                        RotationAnimation on rotation {
-                            from: 0; to: 360; duration: 80000; loops: Animation.Infinite; running: true
+            // 3D Earth Sphere
+            Model {
+                id: earthModel
+                source: "#Sphere"
+                scale: Qt.vector3d(1.8, 1.8, 1.8)
+                materials: [
+                    DefaultMaterial {
+                        diffuseMap: Texture {
+                            source: "../assets/earth.png"
                         }
                     }
+                ]
+
+                NumberAnimation on eulerRotation.y {
+                    from: 0; to: 360; duration: 80000; loops: Animation.Infinite; running: true
                 }
             }
 
-            // Moon
-            Item {
-                id: moonItem
-                width: window.s(32)
-                height: width
+            // 3D Moon Orbit Node (revolving around Earth)
+            Node {
+                id: orbitNode
+                eulerRotation.x: 15 // Tilt the orbit path
 
-                property real xRadius: window.s(150)
-                property real yRadius: window.s(40)
-                property real angle: window.globalOrbitAngle * 4
+                NumberAnimation on eulerRotation.y {
+                    from: 0; to: 360; duration: 25000; loops: Animation.Infinite; running: true
+                }
 
-                x: (parent.width / 2) + Math.cos(angle) * xRadius - (width / 2)
-                y: (parent.height / 2) + Math.sin(angle) * yRadius - (height / 2)
-
-                z: Math.sin(angle) > 0 ? 2 : 0
-                scale: 1.0 + Math.sin(angle) * 0.25
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: width / 2
-                    color: "transparent"
-                    clip: true
-
-                    Image {
-                        anchors.fill: parent
-                        source: "../assets/moon.png"
-                        fillMode: Image.PreserveAspectFit
-
-                        RotationAnimation on rotation {
-                            from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
+                // 3D Moon Sphere
+                Model {
+                    id: moonModel
+                    source: "#Sphere"
+                    x: 180 // Orbit radius distance
+                    scale: Qt.vector3d(0.32, 0.32, 0.32)
+                    materials: [
+                        DefaultMaterial {
+                            diffuseMap: Texture {
+                                source: "../assets/moon.png"
+                            }
                         }
+                    ]
+
+                    NumberAnimation on eulerRotation.y {
+                        from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
                     }
                 }
             }
