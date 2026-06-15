@@ -82,6 +82,28 @@ end)
 ------------------------
 ---- LOOK AND FEEL -----
 ------------------------
+local function load_colors()
+    local active = "rgba(b3c5ffee)"
+    local inactive = "rgba(324478aa)"
+    local file = io.open(os.getenv("HOME") .. "/.config/hypr/colors.conf", "r")
+    if file then
+        for line in file:lines() do
+            local act_val = line:match("active_border%s*=%s*(rgba%((%x+)%))")
+            if act_val then
+                active = act_val
+            end
+            local inact_val = line:match("inactive_border%s*=%s*(rgba%((%x+)%))")
+            if inact_val then
+                inactive = inact_val
+            end
+        end
+        file:close()
+    end
+    return active, inactive
+end
+
+local active_color, inactive_color = load_colors()
+
 hl.config({
     general = {
         border_size = 2,
@@ -91,8 +113,8 @@ hl.config({
         resize_on_border = true,
         extend_border_grab_area = 30,
         col = {
-            active_border   = "rgba(b3c5ffee)",
-            inactive_border = "rgba(324478aa)",
+            active_border   = active_color,
+            inactive_border = inactive_color,
         },
         layout = "dwindle",
     },
