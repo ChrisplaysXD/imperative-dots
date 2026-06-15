@@ -119,10 +119,10 @@ Item {
         let before = name.substring(0, idx);
         let after = name.substring(idx + query.length);
         
+        let accentHex = window.mauve.toString();
         if (isSelected) {
-            return before + "<u><b>" + originalMatch + "</b></u>" + after;
+            return before + "<u><b><font color='" + accentHex + "'>" + originalMatch + "</font></b></u>" + after;
         } else {
-            let accentHex = window.mauve.toString();
             return before + "<b><font color='" + accentHex + "'>" + originalMatch + "</font></b>" + after;
         }
     }
@@ -572,60 +572,7 @@ Item {
                 }
 
                 // --- MATTE MORPHING HIGHLIGHT ---
-                highlight: Item {
-                    z: 0 
-                    
-                    Rectangle {
-                        width: parent.width
-                        radius: window.s(8)
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: window.mauve }
-                            GradientStop { position: 1.0; color: window.blue }
-                        }
-
-                        property int prevIdx: 0
-                        property int curIdx: appList.currentIndex
-
-                        onCurIdxChanged: {
-                            if (curIdx === -1) return; 
-                            
-                            if (curIdx > prevIdx) {
-                                bottomAnim.duration = 250; topAnim.duration = 450;
-                            } else if (curIdx < prevIdx) {
-                                topAnim.duration = 250; bottomAnim.duration = 450;
-                            }
-                            prevIdx = curIdx;
-                        }
-
-                        // Track the current item's ACTUAL coordinates so it sticks mid-flight
-                        property real targetTop: appList.currentItem ? appList.currentItem.y : 0
-                        property real targetBottom: appList.currentItem ? (appList.currentItem.y + appList.currentItem.height) : 0
-
-                        property real actualTop: targetTop
-                        property real actualBottom: targetBottom
-
-                        // Only enable the morphed lagging behavior during keyboard navigation.
-                        // During search/diffing, it will instantly track the moving item.
-                        Behavior on actualTop { 
-                            enabled: window.isKeyboardNav
-                            NumberAnimation { id: topAnim; easing.type: Easing.OutExpo } 
-                        }
-                        Behavior on actualBottom { 
-                            enabled: window.isKeyboardNav
-                            NumberAnimation { id: bottomAnim; easing.type: Easing.OutExpo } 
-                        }
-
-                        y: actualTop
-                        height: actualBottom - actualTop
-                        
-                        // Makes the highlight respect the item's pop-in scale animation
-                        scale: appList.currentItem ? appList.currentItem.scale : 1
-                        
-                        opacity: appList.count > 0 && appList.currentIndex >= 0 ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
-                    }
-                }
+                highlight: Item {}
 
                 delegate: Item {
                     width: ListView.view.width
@@ -638,6 +585,30 @@ Item {
                         anchors.fill: parent
                         radius: window.s(8)
                         color: "transparent"
+                        border.width: window.s(2)
+                        border.color: index === appList.currentIndex ? window.mauve : "transparent"
+                        
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                        transform: Translate {
+                            y: index === appList.currentIndex ? -window.s(4) : 0
+                            Behavior on y {
+                                NumberAnimation {
+                                    duration: 250
+                                    easing.type: Easing.OutBack
+                                    easing.overshoot: 1.6
+                                }
+                            }
+                        }
+
+                        scale: index === appList.currentIndex ? 1.02 : 1.0
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: 250
+                                easing.type: Easing.OutBack
+                                easing.overshoot: 1.4
+                            }
+                        }
                         
                         Rectangle {
                             anchors.fill: parent
@@ -704,7 +675,7 @@ Item {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: window.s(14)
                                 font.weight: index === appList.currentIndex ? Font.Bold : Font.Medium
-                                color: index === appList.currentIndex ? window.crust : window.text
+                                color: window.text
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 
