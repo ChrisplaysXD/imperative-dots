@@ -576,6 +576,8 @@ Item {
                     z: 0 
                     
                     Rectangle {
+                        width: parent.width
+                        radius: window.s(8)
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: window.mauve }
