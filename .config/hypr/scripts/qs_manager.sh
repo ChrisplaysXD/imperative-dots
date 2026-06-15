@@ -18,9 +18,11 @@ if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
     quickshell -p "$SHELL_QML_PATH" ipc call main handleCommand "close" "" "" >/dev/null 2>&1
 
-    CMD="workspace $ACTION"
-    [[ "$TARGET" == "move" ]] && CMD="movetoworkspace $ACTION"
-    hyprctl --batch "dispatch $CMD" >/dev/null 2>&1
+    if [[ "$TARGET" == "move" ]]; then
+        hyprctl dispatch "hl.dsp.window.move({ workspace = $ACTION })" >/dev/null 2>&1
+    else
+        hyprctl dispatch "hl.dsp.focus({ workspace = $ACTION })" >/dev/null 2>&1
+    fi
     exit 0
 fi
 
@@ -178,8 +180,8 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
         CURRENT_SRC=""
         if pgrep -a "mpvpaper" > /dev/null; then
             CURRENT_SRC=$(pgrep -a mpvpaper | grep -o "$SRC_DIR/[^' ]*" | head -n1)
-        elif command -v swww >/dev/null; then
-            CURRENT_SRC=$(swww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
+        elif command -v awww >/dev/null; then
+            CURRENT_SRC=$(awww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
         fi
 
         TARGET_THUMB=""
