@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick3D
 import Quickshell
 import Quickshell.Io
 import "../"
@@ -10,6 +11,7 @@ import "../"
 Item {
     id: window
     focus: true
+
 
     // --- Responsive Scaling Logic ---
     Scaler {
@@ -108,6 +110,7 @@ Item {
 
     // --- Search Query Highlight ---
     function getHighlightedName(name, query, isSelected) {
+        if (!name) return "";
         if (!query || query.trim() === "") return name;
         let q = query.toLowerCase();
         let n = name.toLowerCase();
@@ -118,10 +121,10 @@ Item {
         let before = name.substring(0, idx);
         let after = name.substring(idx + query.length);
         
+        let accentHex = window.mauve.toString();
         if (isSelected) {
-            return before + "<u><b>" + originalMatch + "</b></u>" + after;
+            return before + "<u><b><font color='" + accentHex + "'>" + originalMatch + "</font></b></u>" + after;
         } else {
-            let accentHex = window.mauve.toString();
             return before + "<b><font color='" + accentHex + "'>" + originalMatch + "</font></b>" + after;
         }
     }
@@ -222,7 +225,7 @@ Item {
     }
 
     function launchApp(execStr) {
-        Quickshell.execDetached(["hyprctl", "dispatch", "exec", "--", execStr]);
+        Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.exec_cmd([[" + execStr + "]])"]);
         Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
     }
 
@@ -320,23 +323,147 @@ Item {
         transform: Translate { y: (window.introPhase - 1) * window.s(60) }
         opacity: window.introPhase
 
-        // --- AMBIENT BLOBS ---
-        Rectangle {
-            width: parent.width * 0.8; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
-            y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
-            opacity: 0.08
-            color: window.mauve
-            Behavior on color { ColorAnimation { duration: 1000 } }
+        // --- STARFIELD BACKGROUND ---
+        Item {
+            anchors.fill: parent
+            opacity: 0.6
+
+            Repeater {
+                model: 120
+
+                Rectangle {
+                    id: star
+                    width: 1.5 + Math.random() * 2.5
+                    height: width
+                    radius: width / 2
+                    color: "#ffffff"
+                    
+                    property real relX: Math.random()
+                    property real relY: Math.random()
+                    
+                    x: relX * parent.width
+                    y: relY * parent.height
+
+                    opacity: 0.1 + Math.random() * 0.9
+
+                    SequentialAnimation on opacity {
+                        loops: Animation.Infinite
+                        running: true
+                        
+                        PauseAnimation { duration: Math.random() * 3000 }
+                        NumberAnimation { to: 0.1; duration: 1000 + Math.random() * 1000; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.8 + Math.random() * 0.2; duration: 1000 + Math.random() * 1000; easing.type: Easing.InOutSine }
+                    }
+                }
+            }
         }
-        
-        Rectangle {
-            width: parent.width * 0.9; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
-            y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
-            opacity: 0.06
-            color: window.blue
-            Behavior on color { ColorAnimation { duration: 1000 } }
+
+        // --- EARTH & MOON 3D BACKGROUND ---
+        View3D {
+            id: spaceBackground
+            anchors.fill: parent
+            opacity: 1.0
+            z: 0
+
+            PerspectiveCamera {
+                id: camera
+                z: 500
+            }
+
+            DirectionalLight {
+                eulerRotation.x: -30
+                eulerRotation.y: -45
+                brightness: 0.7
+            }
+
+            DirectionalLight {
+                eulerRotation.x: 30
+                eulerRotation.y: 135
+                brightness: 0.2
+            }
+
+            Texture {
+                id: earthTexture
+                source: Qt.resolvedUrl("../assets/earth.png")
+            }
+
+            Texture {
+                id: moonTexture
+                source: Qt.resolvedUrl("../assets/moon.png")
+            }
+
+            Texture {
+                id: sunTexture
+                source: Qt.resolvedUrl("../assets/sun.jpg")
+            }
+
+            // 3D Sun Sphere in the distance
+            Model {
+                id: sunModel
+                source: "#Sphere"
+                x: -350
+                y: 180
+                z: -800
+                scale: Qt.vector3d(1.8, 1.8, 1.8)
+                materials: [
+                    DefaultMaterial {
+                        lighting: DefaultMaterial.NoLighting
+                        diffuseMap: sunTexture
+                    }
+                ]
+
+                NumberAnimation on eulerRotation.y {
+                    from: 0; to: 360; duration: 120000; loops: Animation.Infinite; running: true
+                }
+            }
+
+
+
+            // 3D Earth Sphere
+            Model {
+                id: earthModel
+                source: "#Sphere"
+                scale: Qt.vector3d(1.8, 1.8, 1.8)
+                materials: [
+                    DefaultMaterial {
+                        diffuseMap: earthTexture
+                    }
+                ]
+
+                NumberAnimation on eulerRotation.y {
+                    from: 0; to: 360; duration: 80000; loops: Animation.Infinite; running: true
+                }
+            }
+
+            // 3D Moon Orbit Node (revolving around Earth)
+            Node {
+                id: orbitTiltNode
+                eulerRotation.x: 45 // Tilt the orbit plane
+
+                Node {
+                    id: orbitRotationNode
+                    NumberAnimation on eulerRotation.y {
+                        from: 0; to: 360; duration: 25000; loops: Animation.Infinite; running: true
+                    }
+
+                    // 3D Moon Sphere
+                    Model {
+                        id: moonModel
+                        source: "#Sphere"
+                        x: 180 // Orbit radius distance
+                        scale: Qt.vector3d(0.32, 0.32, 0.32)
+                        materials: [
+                            DefaultMaterial {
+                                diffuseMap: moonTexture
+                            }
+                        ]
+
+                        NumberAnimation on eulerRotation.y {
+                            from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
+                        }
+                    }
+                }
+            }
         }
 
         ColumnLayout {
@@ -571,58 +698,7 @@ Item {
                 }
 
                 // --- MATTE MORPHING HIGHLIGHT ---
-                highlight: Item {
-                    z: 0 
-                    
-                    Rectangle {
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: window.mauve }
-                            GradientStop { position: 1.0; color: window.blue }
-                        }
-
-                        property int prevIdx: 0
-                        property int curIdx: appList.currentIndex
-
-                        onCurIdxChanged: {
-                            if (curIdx === -1) return; 
-                            
-                            if (curIdx > prevIdx) {
-                                bottomAnim.duration = 250; topAnim.duration = 450;
-                            } else if (curIdx < prevIdx) {
-                                topAnim.duration = 250; bottomAnim.duration = 450;
-                            }
-                            prevIdx = curIdx;
-                        }
-
-                        // Track the current item's ACTUAL coordinates so it sticks mid-flight
-                        property real targetTop: appList.currentItem ? appList.currentItem.y : 0
-                        property real targetBottom: appList.currentItem ? (appList.currentItem.y + appList.currentItem.height) : 0
-
-                        property real actualTop: targetTop
-                        property real actualBottom: targetBottom
-
-                        // Only enable the morphed lagging behavior during keyboard navigation.
-                        // During search/diffing, it will instantly track the moving item.
-                        Behavior on actualTop { 
-                            enabled: window.isKeyboardNav
-                            NumberAnimation { id: topAnim; easing.type: Easing.OutExpo } 
-                        }
-                        Behavior on actualBottom { 
-                            enabled: window.isKeyboardNav
-                            NumberAnimation { id: bottomAnim; easing.type: Easing.OutExpo } 
-                        }
-
-                        y: actualTop
-                        height: actualBottom - actualTop
-                        
-                        // Makes the highlight respect the item's pop-in scale animation
-                        scale: appList.currentItem ? appList.currentItem.scale : 1
-                        
-                        opacity: appList.count > 0 && appList.currentIndex >= 0 ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
-                    }
-                }
+                highlight: Item {}
 
                 delegate: Item {
                     width: ListView.view.width
@@ -633,8 +709,34 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
+                        anchors.leftMargin: window.s(12)
+                        anchors.rightMargin: window.s(12)
                         radius: window.s(8)
                         color: "transparent"
+                        border.width: window.s(2)
+                        border.color: index === appList.currentIndex ? window.mauve : "transparent"
+                        
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                        transform: Translate {
+                            y: index === appList.currentIndex ? -window.s(4) : 0
+                            Behavior on y {
+                                NumberAnimation {
+                                    duration: 250
+                                    easing.type: Easing.OutBack
+                                    easing.overshoot: 1.6
+                                }
+                            }
+                        }
+
+                        scale: index === appList.currentIndex ? 1.02 : 1.0
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: 250
+                                easing.type: Easing.OutBack
+                                easing.overshoot: 1.4
+                            }
+                        }
                         
                         Rectangle {
                             anchors.fill: parent
@@ -694,18 +796,19 @@ Item {
                             }
 
                             Text {
+                                id: appText
                                 Layout.fillWidth: true
                                 text: window.getHighlightedName(model.name, searchInput.text, index === appList.currentIndex)
                                 textFormat: Text.StyledText
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: window.s(14)
                                 font.weight: index === appList.currentIndex ? Font.Bold : Font.Medium
-                                color: index === appList.currentIndex ? window.crust : window.text
+                                color: window.text
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 
                                 property real textShift: index === appList.currentIndex ? window.s(6) : 0
-                                transform: Translate { x: textShift }
+                                transform: Translate { x: appText.textShift }
                                 
                                 Behavior on textShift { 
                                     NumberAnimation { duration: 500; easing.type: Easing.OutExpo } 

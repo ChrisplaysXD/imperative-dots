@@ -100,3 +100,7 @@ if command -v gsettings &> /dev/null; then
     gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 fi
 
+# Reload Hyprland config to apply Matugen window borders
+hyprctl reload
+
+
