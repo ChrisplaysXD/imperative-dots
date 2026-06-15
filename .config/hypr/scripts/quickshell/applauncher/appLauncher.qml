@@ -583,6 +583,8 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
+                        anchors.leftMargin: window.s(6)
+                        anchors.rightMargin: window.s(6)
                         radius: window.s(8)
                         color: "transparent"
                         border.width: window.s(2)
