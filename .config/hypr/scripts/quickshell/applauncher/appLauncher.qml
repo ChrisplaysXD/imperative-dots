@@ -12,6 +12,7 @@ Item {
     id: window
     focus: true
 
+
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
@@ -322,11 +323,46 @@ Item {
         transform: Translate { y: (window.introPhase - 1) * window.s(60) }
         opacity: window.introPhase
 
+        // --- STARFIELD BACKGROUND ---
+        Item {
+            anchors.fill: parent
+            opacity: 0.6
+
+            Repeater {
+                model: 120
+
+                Rectangle {
+                    id: star
+                    width: 1.5 + Math.random() * 2.5
+                    height: width
+                    radius: width / 2
+                    color: "#ffffff"
+                    
+                    property real relX: Math.random()
+                    property real relY: Math.random()
+                    
+                    x: relX * parent.width
+                    y: relY * parent.height
+
+                    opacity: 0.1 + Math.random() * 0.9
+
+                    SequentialAnimation on opacity {
+                        loops: Animation.Infinite
+                        running: true
+                        
+                        PauseAnimation { duration: Math.random() * 3000 }
+                        NumberAnimation { to: 0.1; duration: 1000 + Math.random() * 1000; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.8 + Math.random() * 0.2; duration: 1000 + Math.random() * 1000; easing.type: Easing.InOutSine }
+                    }
+                }
+            }
+        }
+
         // --- EARTH & MOON 3D BACKGROUND ---
         View3D {
             id: spaceBackground
             anchors.fill: parent
-            opacity: 0.12
+            opacity: 1.0
             z: 0
 
             PerspectiveCamera {
@@ -337,8 +373,51 @@ Item {
             DirectionalLight {
                 eulerRotation.x: -30
                 eulerRotation.y: -45
-                brightness: 1.5
+                brightness: 0.7
             }
+
+            DirectionalLight {
+                eulerRotation.x: 30
+                eulerRotation.y: 135
+                brightness: 0.2
+            }
+
+            Texture {
+                id: earthTexture
+                source: Qt.resolvedUrl("../assets/earth.png")
+            }
+
+            Texture {
+                id: moonTexture
+                source: Qt.resolvedUrl("../assets/moon.png")
+            }
+
+            Texture {
+                id: sunTexture
+                source: Qt.resolvedUrl("../assets/sun.jpg")
+            }
+
+            // 3D Sun Sphere in the distance
+            Model {
+                id: sunModel
+                source: "#Sphere"
+                x: -350
+                y: 180
+                z: -800
+                scale: Qt.vector3d(1.8, 1.8, 1.8)
+                materials: [
+                    DefaultMaterial {
+                        lighting: DefaultMaterial.NoLighting
+                        diffuseMap: sunTexture
+                    }
+                ]
+
+                NumberAnimation on eulerRotation.y {
+                    from: 0; to: 360; duration: 120000; loops: Animation.Infinite; running: true
+                }
+            }
+
+
 
             // 3D Earth Sphere
             Model {
@@ -347,9 +426,7 @@ Item {
                 scale: Qt.vector3d(1.8, 1.8, 1.8)
                 materials: [
                     DefaultMaterial {
-                        diffuseMap: Texture {
-                            source: "../assets/earth.png"
-                        }
+                        diffuseMap: earthTexture
                     }
                 ]
 
@@ -360,29 +437,30 @@ Item {
 
             // 3D Moon Orbit Node (revolving around Earth)
             Node {
-                id: orbitNode
-                eulerRotation.x: 15 // Tilt the orbit path
+                id: orbitTiltNode
+                eulerRotation.x: 45 // Tilt the orbit plane
 
-                NumberAnimation on eulerRotation.y {
-                    from: 0; to: 360; duration: 25000; loops: Animation.Infinite; running: true
-                }
-
-                // 3D Moon Sphere
-                Model {
-                    id: moonModel
-                    source: "#Sphere"
-                    x: 180 // Orbit radius distance
-                    scale: Qt.vector3d(0.32, 0.32, 0.32)
-                    materials: [
-                        DefaultMaterial {
-                            diffuseMap: Texture {
-                                source: "../assets/moon.png"
-                            }
-                        }
-                    ]
-
+                Node {
+                    id: orbitRotationNode
                     NumberAnimation on eulerRotation.y {
-                        from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
+                        from: 0; to: 360; duration: 25000; loops: Animation.Infinite; running: true
+                    }
+
+                    // 3D Moon Sphere
+                    Model {
+                        id: moonModel
+                        source: "#Sphere"
+                        x: 180 // Orbit radius distance
+                        scale: Qt.vector3d(0.32, 0.32, 0.32)
+                        materials: [
+                            DefaultMaterial {
+                                diffuseMap: moonTexture
+                            }
+                        ]
+
+                        NumberAnimation on eulerRotation.y {
+                            from: 0; to: 360; duration: 30000; loops: Animation.Infinite; running: true
+                        }
                     }
                 }
             }
