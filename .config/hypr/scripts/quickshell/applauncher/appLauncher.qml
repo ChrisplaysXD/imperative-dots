@@ -108,6 +108,7 @@ Item {
 
     // --- Search Query Highlight ---
     function getHighlightedName(name, query, isSelected) {
+        if (!name) return "";
         if (!query || query.trim() === "") return name;
         let q = query.toLowerCase();
         let n = name.toLowerCase();
@@ -694,6 +695,7 @@ Item {
                             }
 
                             Text {
+                                id: appText
                                 Layout.fillWidth: true
                                 text: window.getHighlightedName(model.name, searchInput.text, index === appList.currentIndex)
                                 textFormat: Text.StyledText
@@ -705,7 +707,7 @@ Item {
                                 verticalAlignment: Text.AlignVCenter
                                 
                                 property real textShift: index === appList.currentIndex ? window.s(6) : 0
-                                transform: Translate { x: textShift }
+                                transform: Translate { x: appText.textShift }
                                 
                                 Behavior on textShift { 
                                     NumberAnimation { duration: 500; easing.type: Easing.OutExpo } 
