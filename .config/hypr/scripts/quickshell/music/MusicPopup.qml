@@ -24,7 +24,7 @@ Item {
     }
 
     // Theme Colors
-    MatugenColors { id: _theme }
+    MusicColors { id: _theme }
 
     // Theme Colors
     readonly property color base: _theme.base

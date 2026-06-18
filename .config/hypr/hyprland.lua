@@ -123,6 +123,7 @@ hl.config({
         rounding       = 4,
         active_opacity   = 1.0,
         inactive_opacity = 1.0,
+        screen_shader  = "/home/chrisplaysxd/.config/hypr/shaders/vibrance.frag",
         
         blur = {
             enabled   = true,
@@ -226,6 +227,7 @@ hl.gesture({
 -- Window Management
 hl.bind("ALT + F4", hl.dsp.window.close())
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mainMod .. " + M", hl.dsp.window.fullscreen({ mode = 1, action = "toggle" }))
 
 -- Resize keys
 hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.resize({ x = -50, y = 0, relative = true }), { repeating = true })
@@ -247,7 +249,7 @@ hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
 
 -- Applications & Shell Binds
 hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal))
-hl.bind(mainMod .. " + F", hl.dsp.exec_cmd("firefox"))
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = 0, action = "toggle" }))
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("nautilus"))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("bash " .. script_dir .. "/reload.sh"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager.sh toggle clipboard"))
@@ -261,6 +263,7 @@ hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager.sh toggle network"))
 hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager.sh toggle focustime"))
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager.sh toggle volume"))
+hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("bash /home/chrisplaysxd/.my-tools/toggle_vibrance.sh"))
 hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("bash " .. script_dir .. "/qs_manager.sh toggle guide"))
 
 -- System & Hardware controls

@@ -10,6 +10,19 @@ if [ ! -f "$PLACEHOLDER" ]; then
     magick -size 500x500 xc:"#313244" "$PLACEHOLDER"
 fi
 
+run_matugen_on_art() {
+    local art="$1"
+    local hash="$2"
+    local isPlaceholder=$(convert "$art" -format "%[hex:u.p{0,0}]" info: 2>/dev/null | cut -c1-6)
+    if [[ "$isPlaceholder" != "313244" ]] && [[ -n "$isPlaceholder" ]]; then
+        matugen -c /home/chrisplaysxd/.config/hypr/scripts/quickshell/music/matugen_music.toml image "$art" --source-color-index 0 >/dev/null 2>&1
+        echo "$hash" > "$TMP_DIR/last_matugen_hash"
+    else
+        rm -f "/tmp/eww_covers/music_colors.json"
+        echo "$hash" > "$TMP_DIR/last_matugen_hash"
+    fi
+}
+
 # --- 2. ONE playerctl CALL for everything ---
 raw=$(playerctl metadata --format \
     '{{status}}|{{xesam:title}}|{{xesam:artist}}|{{mpris:artUrl}}|{{mpris:length}}|{{position}}|{{playerName}}' \
@@ -45,6 +58,11 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
             accent=$(magick xc:"${accent:-#cba6f7}" -colorspace HSL -channel Lightness -evaluate Max 35% +channel -colorspace sRGB -format "%[hex:u]" info: 2>/dev/null | head -c 6)
             echo "#${accent}" > "$TMP_DIR/${trackHash}.color"
         fi
+
+        last_gen=$(cat "$TMP_DIR/last_matugen_hash" 2>/dev/null)
+        if [ "$last_gen" != "$trackHash" ]; then
+            run_matugen_on_art "$finalArt" "$trackHash"
+        fi
     else
         if [ ! -f "$lockFile" ] && [ -n "$rawUrl" ]; then
             touch "$lockFile"
@@ -67,11 +85,15 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 if [[ "$isPlaceholder" == "313244" ]] || [[ -z "$isPlaceholder" ]]; then
                     cp "$finalArt" "$blurPath"
                     echo "#cba6f7" > "$TMP_DIR/${trackHash}.color"
+                    rm -f "/tmp/eww_covers/music_colors.json"
+                    echo "$trackHash" > "$TMP_DIR/last_matugen_hash"
                 else
                     convert "$finalArt" -blur 0x20 -brightness-contrast -30x-10 "$blurPath" 2>/dev/null
                     accent=$(magick "$finalArt" -colors 8 -format "%c" histogram:info: | sort -nr | head -n 1 | awk '{for(i=1;i<=NF;i++) if($i ~ /^#/) {print $i; exit}}' | head -c 7)
                     accent=$(magick xc:"${accent:-#cba6f7}" -colorspace HSL -channel Lightness -evaluate Max 35% +channel -colorspace sRGB -format "%[hex:u]" info: 2>/dev/null | head -c 6)
                     echo "#${accent}" > "$TMP_DIR/${trackHash}.color"
+                    matugen -c /home/chrisplaysxd/.config/hypr/scripts/quickshell/music/matugen_music.toml image "$finalArt" --source-color-index 0 >/dev/null 2>&1
+                    echo "$trackHash" > "$TMP_DIR/last_matugen_hash"
                 fi
 
                 rm -f "$lockFile"
@@ -143,6 +165,9 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
 else
     # --- FALLBACK (Stopped) ---
+    rm -f "/tmp/eww_covers/music_colors.json"
+    rm -f "$TMP_DIR/last_matugen_hash"
+
     if [ -f "$STATE_FILE" ]; then
         last_pos=$(jq -r '.pos_sec' "$STATE_FILE" 2>/dev/null)
         last_len=$(jq -r '.len_sec' "$STATE_FILE" 2>/dev/null)

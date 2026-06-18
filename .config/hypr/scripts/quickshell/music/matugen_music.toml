@@ -1,0 +1,6 @@
+[config]
+reload_apps = false
+
+[templates.music_popup]
+input_path = "/home/chrisplaysxd/.config/matugen/templates/qs_colors.json.template"
+output_path = "/tmp/eww_covers/music_colors.json"
